@@ -4,7 +4,8 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Team from './pages/Team';
 import Login from './pages/Login';
-import Register from './pages/Register';
+// import Register from './pages/Register';
+import Register from './pages/Register'; // Must match Register.js exactly
 function App() {
   // Simple check to see if user is logged in
   const isAuthenticated = !!localStorage.getItem('token');
