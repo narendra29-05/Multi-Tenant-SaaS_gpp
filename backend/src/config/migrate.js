@@ -28,4 +28,4 @@ const runMigrations = async () => {
   }
 };
 
-module.exports = runMigrations;
+module.exports ={ runMigrations};
