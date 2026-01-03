@@ -1,93 +1,146 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
-import Navbar from '../components/Navbar';
+import { AuthContext } from '../context/AuthContext';
+import api from '../services/api';
+
 const ProjectDetails = () => {
   const { projectId } = useParams();
+  const { user } = useContext(AuthContext);
+  const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', priority: 'medium' });
+  const [taskFormData, setTaskFormData] = useState({ title: '', description: '', priority: 'medium' });
 
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-  const token = localStorage.getItem('token');
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [projectId]);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchProjectDetails = async () => {
     try {
-      const res = await axios.get(`${apiUrl}/tasks/projects/${projectId}/tasks`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTasks(res.data.data.tasks || []);
-    } catch (err) {
-      console.error("Error fetching tasks", err);
+      const [projectRes, tasksRes] = await Promise.all([
+        api.get(`/projects/${projectId}`),
+        api.get(`/projects/${projectId}/tasks`)
+      ]);
+      setProject(projectRes.data.data);
+      setTasks(tasksRes.data.data.tasks || []);
+    } catch (error) {
+      console.error('Failed to fetch project details:', error);
     } finally {
       setLoading(false);
     }
-  }, [projectId, apiUrl, token]);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+  };
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
+    if (!taskFormData.title) return;
     try {
-      await axios.post(`${apiUrl}/tasks/projects/${projectId}/tasks`, newTask, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/projects/${projectId}/tasks`, taskFormData);
+      setTaskFormData({ title: '', description: '', priority: 'medium' });
       setShowTaskModal(false);
-      setNewTask({ title: '', priority: 'medium' });
-      fetchTasks();
-    } catch (err) {
-      alert(err.response?.data?.message || "Error creating task");
+      fetchProjectDetails();
+    } catch (error) {
+      console.error('Failed to create task:', error);
     }
   };
 
-  return (
-    <div>
-      <Navbar />
-      <div style={{ padding: '30px' }}>
-        <button onClick={() => window.history.back()}>← Back to Projects</button>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-          <h2>Project Tasks</h2>
-          <button onClick={() => setShowTaskModal(true)} style={{ backgroundColor: '#007bff', color: 'white', padding: '10px' }}>+ New Task</button>
-        </div>
+  const handleTaskStatusChange = async (taskId, newStatus) => {
+    try {
+      await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+      fetchProjectDetails();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
+  };
 
-        {loading ? <p>Loading tasks...</p> : (
-          <div style={{ marginTop: '20px' }}>
-            {tasks.map(task => (
-              <div key={task.id} style={{ border: '1px solid #eee', padding: '15px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', borderRadius: '5px' }}>
-                <div>
-                  <strong>{task.title}</strong>
-                  <div style={{ fontSize: '12px', color: '#666' }}>Priority: {task.priority}</div>
-                </div>
-                <div>
-                  <span style={{ padding: '5px', borderRadius: '3px', backgroundColor: task.status === 'completed' ? '#d4edda' : '#fff3cd' }}>
-                    {task.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {tasks.length === 0 && <p>No tasks yet.</p>}
-          </div>
-        )}
+  if (loading) return <div className="container mt-5"><p>Loading...</p></div>;
+  if (!project) return <div className="container mt-5"><p>Project not found</p></div>;
+
+  return (
+    <div className="container mt-5 mb-5">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1>{project.name}</h1>
+          <p className="text-muted">{project.description}</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowTaskModal(true)}>Add Task</button>
+      </div>
+
+      <div className="card">
+        <div className="card-header">Tasks ({tasks.length})</div>
+        <div className="card-body">
+          {tasks.length > 0 ? (
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assigned To</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map(t => (
+                    <tr key={t.id}>
+                      <td>{t.title}</td>
+                      <td>
+                        <select className="form-select form-select-sm" value={t.status} onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}>
+                          <option value="todo">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </td>
+                      <td><span className={`badge bg-${t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'success'}`}>{t.priority}</span></td>
+                      <td>{t.assignedTo?.fullName || '-'}</td>
+                      <td>
+                        <button className="btn btn-sm btn-danger" onClick={() => api.delete(`/tasks/${t.id}`).then(() => fetchProjectDetails())}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted">No tasks yet</p>
+          )}
+        </div>
       </div>
 
       {showTaskModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '8px' }}>
-            <h3>Add Task</h3>
-            <form onSubmit={handleCreateTask}>
-              <input type="text" placeholder="Task Title" required style={{ width: '100%', marginBottom: '10px' }} 
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})} />
-              <select onChange={(e) => setNewTask({...newTask, priority: e.target.value})} style={{ width: '100%', marginBottom: '10px' }}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-              <button type="submit">Create Task</button>
-              <button type="button" onClick={() => setShowTaskModal(false)}>Cancel</button>
-            </form>
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add Task</h5>
+                <button type="button" className="btn-close" onClick={() => setShowTaskModal(false)}></button>
+              </div>
+              <form onSubmit={handleCreateTask}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Task Title</label>
+                    <input type="text" className="form-control" value={taskFormData.title} onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea className="form-control" rows="3" value={taskFormData.description} onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})}></textarea>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Priority</label>
+                    <select className="form-select" value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowTaskModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Create</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -1,14 +1,13 @@
 const express = require('express');
+const { createTask, listProjectTasks, updateTaskStatus, updateTask, deleteTask } = require('../controllers/taskController');
+const { authenticateToken } = require('../middleware/auth');
+
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const { createTask, updateTaskStatus } = require('../controllers/taskController');
 
-router.use(authenticate);
-
-// API 16: Create Task
-router.post('/projects/:projectId/tasks', createTask);
-
-// API 18: Update Status
-router.patch('/:taskId/status', updateTaskStatus);
+router.post('/:projectId/tasks', authenticateToken, createTask);
+router.get('/:projectId/tasks', authenticateToken, listProjectTasks);
+router.patch('/:taskId/status', authenticateToken, updateTaskStatus);
+router.put('/:taskId', authenticateToken, updateTask);
+router.delete('/:taskId', authenticateToken, deleteTask);
 
 module.exports = router;

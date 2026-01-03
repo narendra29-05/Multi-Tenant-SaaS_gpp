@@ -1,9 +1,12 @@
 const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
+const { registerTenant, login, getCurrentUser, logout } = require('../controllers/authController');
+const { authenticateToken } = require('../middleware/auth');
 
-// Using the controller object directly to avoid destructuring errors
-router.post('/register-tenant', authController.registerTenant);
-router.post('/login', authController.login);
+const router = express.Router();
+
+router.post('/register-tenant', registerTenant);
+router.post('/login', login);
+router.get('/me', authenticateToken, getCurrentUser);
+router.post('/logout', authenticateToken, logout);
 
 module.exports = router;

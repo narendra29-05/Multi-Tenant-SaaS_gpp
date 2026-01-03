@@ -1,10 +1,16 @@
 const express = require('express');
-const router = express.Router();
-const { inviteUser, listTeam } = require('../controllers/userController');
-const { authenticate, authorize } = require('../middleware/authMiddleware');
+const { addUserToTenant, listTenantUsers, updateUser, deleteUser } = require('../controllers/userController');
+const { authenticateToken } = require('../middleware/auth');
+const { authorizeRoles } = require('../middleware/authorization');
 
-// Only Admins should be able to invite new users
-router.post('/invite', authenticate, authorize('admin'), inviteUser);
-router.get('/team', authenticate, listTeam);
+const router = express.Router();
+
+// Tenant users
+router.post('/:tenantId/users', authenticateToken, addUserToTenant);
+router.get('/:tenantId/users', authenticateToken, listTenantUsers);
+
+// Individual user
+router.put('/users/:userId', authenticateToken, updateUser);
+router.delete('/users/:userId', authenticateToken, deleteUser);
 
 module.exports = router;
