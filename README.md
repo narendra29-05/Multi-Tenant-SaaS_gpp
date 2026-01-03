@@ -361,7 +361,7 @@ gpp-task3/
 │   │   ├── middleware/     # Auth, authorization
 │   │   ├── utils/          # Validation, audit logging
 │   │   ├── config/         # Database connection
-│   │   └── server.js       # Express server
+│   │   └── app.js       # Express server
 │   ├── migrations/         # Database migrations
 │   ├── seeds/              # Database seed data
 │   ├── package.json
@@ -383,10 +383,7 @@ gpp-task3/
 ├── docs/
 │   ├── research.md
 │   ├── PRD.md
-│   ├── architecture.md
-│   ├── technical-spec.md
-│   ├── API.md
-│   └── images/
+│   └── architecture.md
 ├── docker-compose.yml
 ├── README.md
 └── submission.json
