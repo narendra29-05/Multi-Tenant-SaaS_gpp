@@ -1,17 +1,17 @@
 FROM node:18-alpine
 
-# Install build dependencies for bcrypt
-RUN apk add --no-cache python3 make g++ curl
-
+# Use the same directory as defined in volumes
 WORKDIR /app
 
+# Install dependencies first for better caching
 COPY package*.json ./
-
-# This will now build bcrypt for Linux/Alpine specifically
 RUN npm install
 
+# Copy the rest of the application
 COPY . .
 
+# Expose the backend port
 EXPOSE 5000
 
-CMD ["npm", "run", "dev"]
+# Default command (overridden in docker-compose for dev)
+CMD ["npm", "start"]
